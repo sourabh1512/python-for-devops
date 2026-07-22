@@ -1,15 +1,15 @@
 import json
 
+import requests
+
 try:
     import brotli
 except ImportError:  # pragma: no cover - optional dependency
     brotli = None
 
-import requests
+URL = "https://chartink.com/screener/process"
 
-url = "https://chartink.com/screener/process"
-
-headers = {
+HEADERS = {
     "accept": "*/*",
     "accept-encoding": "gzip, deflate, br, zstd",
     "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
@@ -20,7 +20,7 @@ headers = {
     "sec-ch-ua": '"Not;A=Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"',
     "sec-ch-ua-mobile": "?0",
     "sec-ch-ua-platform": '"macOS"',
-    "sec-fetch-dest": "empty",  
+    "sec-fetch-dest": "empty",
     "sec-fetch-mode": "cors",
     "sec-fetch-site": "same-origin",
     "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
@@ -47,55 +47,91 @@ cookie_header = (
     "ci_session=eyJpdiI6InA0S1dNdCs1ZjN5VVdqQUNtNFcxaXc9PSIsInZhbHVlIjoianJZRnJuR0RpS04rQ1VBZ3M2T0FibWJRd09ETm12aC84Vjc0OVRWMkNJcGpScVdYWVM2S3lPYnEwNlZjZjRHby9uekRrUGl0N0grenN2dmtkK3RaYk1icUxTN05zMnlvR0JhcVVhS2NuTWFRY3ZaWTBaQjhSV2xaT3p3bDNtZUciLCJtYWMiOiI1ZjZlNTJkZDY3ZmEyNjA3ZGQ0OTBkYjRkODkyOWFmMjlmNmI1YThjM2VlMWViNjRlOWU5MTgzY2Q5ZDViYzBhIiwidGFnIjoiIn0%3D"
 )
 
-cookies = {}
+COOKIES = {}
 for raw_cookie in cookie_header.split(";"):
     if "=" in raw_cookie:
         key, value = raw_cookie.split("=", 1)
-        cookies[key.strip()] = value.strip()
+        COOKIES[key.strip()] = value.strip()
 
-payload = {
-    "scan_clause":"( {cash} (  quarterly indian promoter and group percentage >  1 quarter ago indian promoter and group percentage and  market cap >=  1000 and  daily \"close - 1 candle ago close / 1 candle ago close * 100\" >  10 ) )","debug_clause":"groupcount( 1 where  quarterly indian promoter and group percentage >  1 quarter ago indian promoter and group percentage),groupcount( 1 where  market cap >=  1000),groupcount( 1 where  daily \"close - 1 candle ago close / 1 candle ago close * 100\" >  10)","column_clause":" Daily Close as 'scan-column-default-close',  Daily \"close - 1 candle ago close / 1 candle ago close * 100\" as 'scan-column-default-percent-change', filternumber( daily close >  1 day ago close,1) as 'default-percent-change-conditional-filters-color',  Daily Volume as 'scan-column-default-volume'"}
+PAYLOADS = {
+    "RSIAbove50": {
+        "scan_clause": "( {cash} (  weekly close >=  52 and  daily ema( close,5 ) >  daily ema( close,26 ) and  daily ema( close,13 ) >  daily ema( close,26 ) and  daily close >  1 day ago close *  1.03 and  daily volume >  daily sma( volume,20 ) *  1.0 and  daily ema( close,5 ) >  daily ema( close,13 ) and  daily high =  daily max( 260 ,  daily high ) *  1 and  1 day ago close >  2 days ago close *  0.98 and  daily rsi( 14 ) >  55 ) )",
+        "debug_clause": "groupcount( 1 where  weekly close >=  52),groupcount( 1 where  daily ema( close,5 ) >  daily ema( close,26 )),groupcount( 1 where  daily ema( close,13 ) >  daily ema( close,26 )),groupcount( 1 where  daily close >  1 day ago close *  1.03),groupcount( 1 where  daily volume >  daily sma( volume,20 ) *  1.0),groupcount( 1 where  daily ema( close,5 ) >  daily ema( close,13 )),groupcount( 1 where  daily high =  daily max( 260 ,  daily high ) *  1),groupcount( 1 where  1 day ago close >  2 days ago close *  0.98),groupcount( 1 where  daily rsi( 14 ) >  55)",
+        "column_clause": " Daily Close as 'scan-column-default-close',  Daily \"close - 1 candle ago close / 1 candle ago close * 100\" as 'scan-column-default-percent-change', filternumber( daily close >  1 day ago close,1) as 'default-percent-change-conditional-filters-color',  Daily Volume as 'scan-column-default-volume'",
+    },
+    "ShortTermBreakouts": {
+        "scan_clause": "( {cash} (  daily max( 5 ,  daily close ) >  6 days ago max( 120 ,  daily close ) *  1.05 and  daily volume >  daily sma( volume,5 ) and  daily close >  1 day ago close ) )",
+        "debug_clause": "groupcount( 1 where  daily max( 5 ,  daily close ) >  6 days ago max( 120 ,  daily close ) *  1.05),groupcount( 1 where  daily volume >  daily sma( volume,5 )),groupcount( 1 where  daily close >  1 day ago close)",
+        "column_clause": " Daily Close as 'scan-column-default-close',  Daily \"close - 1 candle ago close / 1 candle ago close * 100\" as 'scan-column-default-percent-change', filternumber( daily \"close - 1 candle ago close / 1 candle ago close * 100\" >  0,1) as 'default-percent-change-conditional-filters-color',  Daily Volume as 'scan-column-default-volume'",
+    },
+    "52wHighBreakouts": {
+        "scan_clause":"( {cash} (  daily close >  1 day ago max( 240 ,  daily high ) ) )","debug_clause":"groupcount( 1 where  daily close >  1 day ago max( 240 ,  daily high ))","column_clause":" Daily Close as 'scan-column-default-close',  Daily \"close - 1 candle ago close / 1 candle ago close * 100\" as 'scan-column-default-percent-change', filternumber( daily close >  1 day ago close,1) as 'default-percent-change-conditional-filters-color',  Daily Volume as 'scan-column-default-volume'"}
+}
 
-response = requests.post(url, headers=headers, cookies=cookies, json=payload, timeout=30)
+aggregated_rows = {}
 
-print(f"Status code: {response.status_code}")
-print("Response headers:")
-for key, value in response.headers.items():
-    if key.lower() in {"content-type", "set-cookie", "cache-control", "server"}:
-        print(f"{key}: {value}")
-print("\n SCRIPT: RSI ABOVE 50 AND BREAKOUT")
+for tag, payload in PAYLOADS.items():
+    response = requests.post(URL, headers=HEADERS, cookies=COOKIES, json=payload, timeout=30)
+    print(f"\nTag: {tag} | Status code: {response.status_code}")
+
+    try:
+        content_encoding = response.headers.get("content-encoding", "").lower()
+        decoded_body = response.text or ""
+
+        if not decoded_body and brotli is not None and "br" in content_encoding:
+            decoded_body = brotli.decompress(response.content).decode("utf-8", errors="replace")
+        elif not decoded_body:
+            decoded_body = response.content.decode("utf-8", errors="replace")
+
+        data = json.loads(decoded_body)
+        rows = data.get("data", [])
+        if not rows:
+            print(f"No matching records found for {tag}.")
+            continue
+
+        for item in rows:
+            code = item.get("nsecode", "")
+            name = item.get("name", "")
+            key = (code, name)
+
+            if key not in aggregated_rows:
+                aggregated_rows[key] = {
+                    "code": code,
+                    "name": name,
+                    "close": item.get("scan-column-default-close", ""),
+                    "change": item.get("scan-column-default-percent-change", ""),
+                    "volume": item.get("scan-column-default-volume", ""),
+                    "tags": [tag],
+                }
+            elif tag not in aggregated_rows[key]["tags"]:
+                aggregated_rows[key]["tags"].append(tag)
+    except (ValueError, json.JSONDecodeError, AttributeError) as exc:
+        print(f"Unable to parse response for {tag}: {exc}")
+        print(decoded_body[:4000] if "decoded_body" in locals() else response.text[:4000])
+
+print("\n SCRIPT: MULTI-PAYLOAD SCREENER RESULTS")
 print("\nFormatted table:")
-try:
-    content_encoding = response.headers.get("content-encoding", "").lower()
-    decoded_body = response.text or ""
-
-    if not decoded_body and brotli is not None and "br" in content_encoding:
-        decoded_body = brotli.decompress(response.content).decode("utf-8", errors="replace")
-    elif not decoded_body:
-        decoded_body = response.content.decode("utf-8", errors="replace")
-
-    data = json.loads(decoded_body)
-    rows = data.get("data", [])
-    if not rows:
-        print("No matching records found.")
-    else:
-        headers = ["CODE", "NAME", "CLOSE", "CHANGE %", "VOLUME"]
-        rows_display = [
-            [
-                item.get("nsecode", ""),
-                item.get("name", ""),
-                item.get("scan-column-default-close", ""),
-                item.get("scan-column-default-percent-change", ""),
-                item.get("scan-column-default-volume", ""),
-            ]
-            for item in rows
+if not aggregated_rows:
+    print("No matching records found.")
+else:
+    headers = ["CODE", "NAME", "TAGS", "CLOSE", "CHANGE %", "VOLUME"]
+    rows_display = [
+        [
+            row["code"],
+            row["name"],
+            ", ".join(row["tags"]),
+            row["close"],
+            row["change"],
+            row["volume"],
         ]
+        for row in sorted(
+            aggregated_rows.values(),
+            key=lambda item: (-len(item["tags"]), item["code"], item["name"]),
+        )
+    ]
 
-        col_widths = [max(len(str(row[i])) for row in [headers] + rows_display) for i in range(len(headers))]
-        print(" | ".join(header.ljust(col_widths[i]) for i, header in enumerate(headers)))
-        print("-+-".join("-" * width for width in col_widths))
-        for row in rows_display:
-            print(" | ".join(str(value).ljust(col_widths[i]) for i, value in enumerate(row)))
-except (ValueError, json.JSONDecodeError, AttributeError) as exc:
-    print(f"Unable to parse response as JSON: {exc}")
-    print(decoded_body[:4000] if "decoded_body" in locals() else response.text[:4000])
+    col_widths = [max(len(str(row[i])) for row in [headers] + rows_display) for i in range(len(headers))]
+    print(" | ".join(header.ljust(col_widths[i]) for i, header in enumerate(headers)))
+    print("-+-".join("-" * width for width in col_widths))
+    for row in rows_display:
+        print(" | ".join(str(value).ljust(col_widths[i]) for i, value in enumerate(row)))
