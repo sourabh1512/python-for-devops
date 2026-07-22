@@ -1,5 +1,10 @@
 import json
 
+try:
+    import brotli
+except ImportError:  # pragma: no cover - optional dependency
+    brotli = None
+
 import requests
 
 url = "https://chartink.com/screener/process"
@@ -15,12 +20,12 @@ headers = {
     "sec-ch-ua": '"Not;A=Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"',
     "sec-ch-ua-mobile": "?0",
     "sec-ch-ua-platform": '"macOS"',
-    "sec-fetch-dest": "empty",
+    "sec-fetch-dest": "empty",  
     "sec-fetch-mode": "cors",
     "sec-fetch-site": "same-origin",
     "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
     "x-requested-with": "XMLHttpRequest",
-    "x-xsrf-token": "eyJpdiI6Ikt2alpTV25KblVsUFVKYlZNckZiZWc9PSIsInZhbHVlIjoiNG9kWXpEUnZIY3YxNm1hVnlremVvNkVVSktkU1RNbmxidFdMZTlMQ3o4YUFITXBVOGUrUExIb0dNRHNwaHBzWXZrOEVnZ3NiMkMyamorMzIwSzljbzhyUWQwVkVLWjlEK3RPb2E5U1RaRUh5N1lMdnd2RjZOcVpWRHFEdXRrb1EiLCJtYWMiOiJjNzBjNjdiN2M1MzE2OWMyZjQ2NDRjZTE3NGEwZjBjMjYxNDJiYmFiYjYwY2IxMGJhMjI2ZWQ5ZGQ2NzJhYTFlIiwidGFnIjoiIn0=",
+    "x-xsrf-token": "eyJpdiI6InptcjdMOFQyNUorZ2pCS1EvZE53MHc9PSIsInZhbHVlIjoidDNjUjNla2NkOFY2N2NKZEliNjQvTHp1MzRINnZVSUtDTEhCdDB4TnBtVlkwajNtT1RUVVVQOUx3RGUzYklVSWNITTVQVkk3RTc3ZVNNTy9HL1hEVzFNSUs3SXpWOFhvRVYwamM3MEwrM1l0SUFDdllRRHl4MzVkejZRMzM2U1QiLCJtYWMiOiJmMjExY2UzMmY0Mjk3NjNlMTQ5ZjYyYzgyMjc1NTkyZmY1NzU3ZGFhOTBhMWJjNjkyMTU3ZTk0NDVhMGE0ZTEyIiwidGFnIjoiIn0=",
 }
 
 cookie_header = (
@@ -38,8 +43,8 @@ cookie_header = (
     "__gads=ID=a475dc11d13edfcf:T=1784555440:RT=1784598228:S=ALNI_MYui5MgqrqdpMh-ReKIEte6_hI-uA; "
     "__gpi=UID=000014cd24fad536:T=1784555440:RT=1784598228:S=ALNI_MZGgCFV-utYaaRCbqopFGIu-JkQow; "
     "__eoi=ID=262f680056f8b3e7:T=1784555440:RT=1784598228:S=AA-Afja56EFTSdPZv4hb308AWKUH; "
-    "XSRF-TOKEN=eyJpdiI6Ikt2alpTV25KblVsUFVKYlZNckZiZWc9PSIsInZhbHVlIjoiNG9kWXpEUnZIY3YxNm1hVnlremVvNkVVSktkU1RNbmxidFdMZTlMQ3o4YUFITXBVOGUrUExIb0dNRHNwaHBzWXZrOEVnZ3NiMkMyamorMzIwSzljbzhyUWQwVkVLWjlEK3RPb2E5U1RaRUh5N1lMdnd2RjZOcVpWRHFEdXRrb1EiLCJtYWMiOiJjNzBjNjdiN2M1MzE2OWMyZjQ2NDRjZTE3NGEwZjBjMjYxNDJiYmFiYjYwY2IxMGJhMjI2ZWQ5ZGQ2NzJhYTFlIiwidGFnIjoiIn0%3D; "
-    "ci_session=eyJpdiI6IjFST0k3V0svdkZHdzNEZTBMWDVrbHc9PSIsInZhbHVlIjoiMGZZMjIyNFpjMlhLTTFKYlNmVG9CWUJlaStWbzZmb3BUOEhpTmVTTFM4TGhhVlJTZlZqV2IzV0xveExwUFVKWEZuWW5PU240NmR0Vzc2NFhXNmpyMmFuR1EzMjFZL2dXNFQ3TjJxL3JJTk9CMXh2MjlLL0RIKytFVFBVaW83bS8iLCJtYWMiOiI2ZjYyMWQ2ZGQ5YmE3Y2MzZGI2YjYzNmI2NDdhNjg3MjdmMmRhOGM1NmM2NGE2MmYzODE0NTcyNjY2ZDhmMTk3IiwidGFnIjoiIn0%3D"
+    "XSRF-TOKEN=eyJpdiI6Ikhpdmp3UytoVTFFM3JrNjJXUitISEE9PSIsInZhbHVlIjoiZkR0YllPK2dlRmtpUURSdStnZ0h0NXdjaHpabzlFM3dQT1B3S3RTbjh5eVVJS1hGV0M3dEhWSml1WU91ckRzTE4wSGFtQmhCelJjVVRUdmJqMWtjd3FnOVkxZXRtMXV6ZHJaWWNONjZtVk9aWDdWVkQrWG5FdlJZZ204VnJzakwiLCJtYWMiOiJkZDQzNWFkYmRhZmRlYmE1Njg3MGU1N2Y1MzAxMTFiYTUzZjdkNzNlYjlkMGEwY2ZhOGVlMzRkZGZhNzlhMzEyIiwidGFnIjoiIn0%3D; "
+    "ci_session=eyJpdiI6InA0S1dNdCs1ZjN5VVdqQUNtNFcxaXc9PSIsInZhbHVlIjoianJZRnJuR0RpS04rQ1VBZ3M2T0FibWJRd09ETm12aC84Vjc0OVRWMkNJcGpScVdYWVM2S3lPYnEwNlZjZjRHby9uekRrUGl0N0grenN2dmtkK3RaYk1icUxTN05zMnlvR0JhcVVhS2NuTWFRY3ZaWTBaQjhSV2xaT3p3bDNtZUciLCJtYWMiOiI1ZjZlNTJkZDY3ZmEyNjA3ZGQ0OTBkYjRkODkyOWFmMjlmNmI1YThjM2VlMWViNjRlOWU5MTgzY2Q5ZDViYzBhIiwidGFnIjoiIn0%3D"
 )
 
 cookies = {}
@@ -49,10 +54,7 @@ for raw_cookie in cookie_header.split(";"):
         cookies[key.strip()] = value.strip()
 
 payload = {
-    "scan_clause": "( {cash} (  weekly close >=  52 and  daily ema( close,5 ) >  daily ema( close,26 ) and  daily ema( close,13 ) >  daily ema( close,26 ) and  daily close >  1 day ago close *  1.03 and  daily volume >  daily sma( volume,20 ) *  1.0 and  daily ema( close,5 ) >  daily ema( close,13 ) and  daily high =  daily max( 260 ,  daily high ) *  1 and  1 day ago close >  2 days ago close *  0.98 and  daily rsi( 14 ) >  50 ) )",
-    "debug_clause": "groupcount( 1 where  weekly close >=  52),groupcount( 1 where  daily ema( close,5 ) >  daily ema( close,26 )),groupcount( 1 where  daily ema( close,13 ) >  daily ema( close,26 )),groupcount( 1 where  daily close >  1 day ago close *  1.03),groupcount( 1 where  daily volume >  daily sma( volume,20 ) *  1.0),groupcount( 1 where  daily ema( close,5 ) >  daily ema( close,13 )),groupcount( 1 where  daily high =  daily max( 260 ,  daily high ) *  1),groupcount( 1 where  1 day ago close >  2 days ago close *  0.98),groupcount( 1 where  daily rsi( 14 ) >  50)",
-    "column_clause": " Daily Close as 'scan-column-default-close',  Daily \"close - 1 candle ago close / 1 candle ago close * 100\" as 'scan-column-default-percent-change', filternumber( daily close >  1 day ago close,1) as 'default-percent-change-conditional-filters-color',  Daily Volume as 'scan-column-default-volume'",
-}
+    "scan_clause":"( {cash} (  quarterly indian promoter and group percentage >  1 quarter ago indian promoter and group percentage and  market cap >=  1000 and  daily \"close - 1 candle ago close / 1 candle ago close * 100\" >  10 ) )","debug_clause":"groupcount( 1 where  quarterly indian promoter and group percentage >  1 quarter ago indian promoter and group percentage),groupcount( 1 where  market cap >=  1000),groupcount( 1 where  daily \"close - 1 candle ago close / 1 candle ago close * 100\" >  10)","column_clause":" Daily Close as 'scan-column-default-close',  Daily \"close - 1 candle ago close / 1 candle ago close * 100\" as 'scan-column-default-percent-change', filternumber( daily close >  1 day ago close,1) as 'default-percent-change-conditional-filters-color',  Daily Volume as 'scan-column-default-volume'"}
 
 response = requests.post(url, headers=headers, cookies=cookies, json=payload, timeout=30)
 
@@ -64,7 +66,15 @@ for key, value in response.headers.items():
 print("\n SCRIPT: RSI ABOVE 50 AND BREAKOUT")
 print("\nFormatted table:")
 try:
-    data = response.json()
+    content_encoding = response.headers.get("content-encoding", "").lower()
+    decoded_body = response.text or ""
+
+    if not decoded_body and brotli is not None and "br" in content_encoding:
+        decoded_body = brotli.decompress(response.content).decode("utf-8", errors="replace")
+    elif not decoded_body:
+        decoded_body = response.content.decode("utf-8", errors="replace")
+
+    data = json.loads(decoded_body)
     rows = data.get("data", [])
     if not rows:
         print("No matching records found.")
@@ -86,5 +96,6 @@ try:
         print("-+-".join("-" * width for width in col_widths))
         for row in rows_display:
             print(" | ".join(str(value).ljust(col_widths[i]) for i, value in enumerate(row)))
-except ValueError:
-    print(response.text[:4000])
+except (ValueError, json.JSONDecodeError, AttributeError) as exc:
+    print(f"Unable to parse response as JSON: {exc}")
+    print(decoded_body[:4000] if "decoded_body" in locals() else response.text[:4000])
